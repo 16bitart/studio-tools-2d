@@ -64,7 +64,7 @@ namespace PrefabricatorUtility.Runtime
         }
     
  
-        private void OnDrawGizmosSelected()
+        protected virtual void OnDrawGizmosSelected()
         {
             if (DrawBoundsGizmo)
             {

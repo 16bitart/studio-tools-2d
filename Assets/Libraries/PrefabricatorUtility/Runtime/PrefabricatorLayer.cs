@@ -13,6 +13,8 @@ namespace PrefabricatorUtility.Runtime
 
         public GameObject BakeTiles(string prefabName)
         {
+            _tilemap.CompressBounds();
+            _tilemap.RefreshAllTiles();
             var gameObj = new GameObject(prefabName);
             var tiles = GetAllTileInfo();
             if (tiles.Count == 0) return null;
