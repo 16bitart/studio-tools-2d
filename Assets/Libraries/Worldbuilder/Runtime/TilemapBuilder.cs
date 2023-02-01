@@ -6,9 +6,8 @@ using UnityEngine.Tilemaps;
 public class TilemapBuilder : MonoBehaviour
 {
     [SerializeField] private Tilemap _tilemap;
-    
     [SerializeField] private TileBase _baseTile;
-
+    
     private HashSet<Vector3Int> _tileLocations = new HashSet<Vector3Int>();
 
     private void OnValidate()

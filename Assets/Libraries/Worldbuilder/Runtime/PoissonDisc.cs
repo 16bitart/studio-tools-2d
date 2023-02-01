@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public static class PoissonDisc
 {
@@ -78,6 +80,17 @@ public static class PoissonDisc
 
 public static class Utils
 {
+    public static int GetNodeDistance(Vector2Int nodeA, Vector2Int nodeB)
+    {
+        var xDistance = Math.Abs(nodeA.x - nodeB.x);
+        var yDistance = Math.Abs(nodeA.y - nodeB.y);
+        if (xDistance > yDistance)
+        {
+            return 14 * yDistance + 10 * (xDistance - yDistance);
+        }
+
+        return 14 * xDistance + 10 * (yDistance - xDistance);
+    }
     public static Vector2 GetRandomDirection()
     {
         var angle = GetRandomAngle();

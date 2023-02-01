@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Libraries.Algorithms
 {
     public class Node2D<T> where T : new()
@@ -12,5 +14,7 @@ namespace Libraries.Algorithms
             Y = yPos;
             Value = value ?? new T();
         }
+
+        public Node2D() : this(0, 0, default) { }
     }
 }

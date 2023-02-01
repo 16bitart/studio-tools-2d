@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47deb5df6f9346b68be459d5863f49cb, type: 3}
+  m_Name: BerryPlantData
+  m_EditorClassIdentifier: 
+  <UniqueIdentifier>k__BackingField: 
+  <Biome>k__BackingField: 0
+  <PlantName>k__BackingField: Berry Bush
+  <Description>k__BackingField: Grows Berries.
+  <GrowthRate>k__BackingField: 0.5
+  <SeedRate>k__BackingField: 1
+  <SeedDistance>k__BackingField: 1
+  <HungerValue>k__BackingField: 10
+  <IsPoisonous>k__BackingField: 0
+  <GrowingSprite>k__BackingField: {fileID: -1280837308, guid: b2bf2f8967e8c52438827ee211de920b, type: 3}
+  <GrownSprite>k__BackingField: {fileID: -1405306914, guid: b2bf2f8967e8c52438827ee211de920b, type: 3}

@@ -4,18 +4,18 @@ using UnityEngine;
 
 public class DynamicObject : MonoBehaviour
 {
-
+    
     [SerializeField] private SpriteRenderer _spriteRenderer;
-    [field: SerializeField] public Vector2Int ObjectSize { get; private set; }
+    [field: SerializeField] public Vector2Int RenderSize { get; private set; }
 
     private void OnValidate()
     {
         _spriteRenderer = GetSpriteRenderer();
-        var size = _spriteRenderer.sprite.bounds.extents * 2;
-        ObjectSize = new Vector2Int(Mathf.CeilToInt(size.x), Mathf.CeilToInt(size.y));
+        var size = _spriteRenderer.sprite.bounds.size;
+        RenderSize = new Vector2Int(Mathf.CeilToInt(size.x), Mathf.CeilToInt(size.y));
     }
 
-    public SpriteRenderer GetSpriteRenderer()
+    private SpriteRenderer GetSpriteRenderer()
     {
         if (_spriteRenderer == null)
         {

@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using Libraries.Algorithms;
+using UnityEngine;
 
 namespace Libraries.Algorithms
 {
@@ -65,7 +68,49 @@ namespace Libraries.Algorithms
         {
             return x >= 0 && x < Width && y >= 0 && y < Height;
         }
+
+        public IEnumerable<T> AllNodes()
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    yield return _nodes[x, y];
+                }
+            }
+        }
+        
+        public T GetNode(int x, int y)
+        {
+            if (IsValidPos(x, y))
+            {
+                return _nodes[x, y];
+            }
+            
+            throw new IndexOutOfRangeException($"{x}, {y} is outside the bounds of the Grid.");
+        }
+        
+        public List<T> GetNeighbors(T node)
+        {
+            var neighbors = new List<T>();
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    if (x == 0 && y == 0) continue;
+                    int checkX = node.X + x;
+                    int checkY = node.Y + y;
+
+                    if (IsValidPos(checkX, checkY))
+                    {
+                        neighbors.Add(GetNode(checkX, checkY));
+                    }
+                }
+            }
+            
+            return neighbors;
+        }
+
     }
-    
     
 }

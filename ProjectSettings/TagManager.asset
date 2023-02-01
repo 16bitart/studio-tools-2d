@@ -41,3 +41,21 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Ground
+    uniqueID: 1807293437
+    locked: 0
+  - name: GroundDeco
+    uniqueID: 2873777939
+    locked: 0
+  - name: Water
+    uniqueID: 483421137
+    locked: 0
+  - name: WaterDeco
+    uniqueID: 2764317075
+    locked: 0
+  - name: Instances
+    uniqueID: 1324598103
+    locked: 0
+  - name: Front
+    uniqueID: 4172891985
+    locked: 0

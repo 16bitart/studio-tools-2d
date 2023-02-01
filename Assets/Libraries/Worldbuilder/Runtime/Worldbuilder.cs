@@ -5,160 +5,128 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
+
 public class Worldbuilder : MonoBehaviour
 {
-    public Vector2 WorldSize => new Vector2(_worldWidth, _worldHeight);
-    [SerializeField, Range(10, 500)] private int _worldWidth = 100;
-    [SerializeField, Range(10, 500)] private int _worldHeight = 100;
-    [SerializeField, Range(1, 100)] private int _worldScale = 15;
+    public Vector2 WorldSize => new Vector2(_width, _height);
+    [SerializeField, Range(10, 500)] private int _width = 100;
+    [SerializeField, Range(10, 500)] private int _height = 100;
+    [SerializeField, Range(1, 25f)] private float _scale = 15f;
     [SerializeField] private Vector2 _worldOffset = Vector2.zero;
-
-
-    [SerializeField] private bool _generateTrees = true;
     [SerializeField] private bool _generateLakes = true;
     [SerializeField] private bool _generateRivers = true;
-
     [SerializeField, Range(0, 1f)] private float _groundThreshold = .3f;
     [SerializeField, Range(0, 1f)] private float _lakeThreshhold = .2f;
     [SerializeField, Range(0, 1f)] private float _riverThreshhold = .4f;
-
+    [SerializeField, Range(0, 25)] private int _grassDistanceBetweenPlacements = 1;
+    [SerializeField, Range(0, 25)] private int _grassIterations = 1;
     [field: SerializeField] public TilemapBuilder GroundTilemap { get; private set; }
     [field: SerializeField] public TilemapBuilder WaterTilemap { get; private set; }
-    [field: SerializeField] public TilemapBuilder GrassTilemap { get; private set; }
+    [field: SerializeField] public TilemapBuilder GroundDecorationTilemap { get; private set; }
+    [field: SerializeField] public TilemapBuilder WaterDecorationTilemap { get; private set; }
 
     [SerializeField] private TreePlacer _treePlacer;
-    [SerializeField] private GrassPlacement _grassPlacer;
+    [SerializeField] private PlantPlacer _plantPlacer;
+    [SerializeField] private MineralPlacer _mineralPlacer;
 
     private float[,] _heightMap;
-
-    public float[,] GenerateHeightMap()
+    
+    public void Initialize(Vector2Int size, float scale, Vector2 offset)
     {
-        return HeightMapGenerator.Generate(_worldWidth, _worldHeight, _worldOffset, _worldScale);
+        _height = size.x;
+        _width = size.y;
+        _scale = scale;
+        _worldOffset = offset;
     }
-
 
     [ContextMenu("Run Generation")]
     public void Run()
     {
         Reset();
-        GenerateBaseTiles();
-        GenerateGrassTiles();
-        if (_generateTrees) _treePlacer.GenerateTrees();
+        GenerateTerrain();
+        GenerateGrass();
+        _plantPlacer.GenerateObjects();
+        _treePlacer.GenerateObjects();
+        _mineralPlacer.GenerateObjects();
     }
-
-    public HashSet<Vector3Int> GetClosedPositions()
-    {
-        var waterTiles = WaterTilemap.GetAllTileLocations().ToHashSet();
-        return waterTiles;
-    }
-
-    private void GenerateGrassTiles()
-    {
-        _grassPlacer.GenerateGrassTiles();
-    }
-
+    
+    [ContextMenu("Reset World")]
     public void Reset()
     {
         GroundTilemap.ClearAllTiles();
         WaterTilemap.ClearAllTiles();
-        GrassTilemap.ClearAllTiles();
+        GroundDecorationTilemap.ClearAllTiles();
         _treePlacer.Reset();
+        _plantPlacer.Reset();
+        _mineralPlacer.Reset();
     }
 
-    private void GenerateBaseTiles()
+    public HashSet<Vector3Int> GetClosedPositions()
     {
-        _heightMap = GenerateHeightMap();
-        for (int y = 0; y < _worldHeight; y++)
+        var closed = new HashSet<Vector3Int>();
+        closed.UnionWith(WaterTilemap.GetAllTileLocations().ToHashSet());
+        closed.UnionWith(_treePlacer.ClosedTiles);
+        closed.UnionWith(_plantPlacer.ClosedTiles);
+        closed.UnionWith(_mineralPlacer.ClosedTiles);
+        return closed;
+    }
+
+    private void GenerateTerrain()
+    {
+        _heightMap = HeightMapGenerator.Generate(_width, _height, _worldOffset, _scale);
+        
+        for (int y = 0; y < _height; y++)
         {
-            for (int x = 0; x < _worldWidth; x++)
+            for (int x = 0; x < _width; x++)
             {
                 PlaceTile(_heightMap, x, y);
             }
         }
     }
 
+    private void GenerateGrass()
+    {
+        var grassPositions = new HashSet<Vector3Int>();
+        var candidatePositions = GroundTilemap.GetAllTileLocations();
+        var closedTiles = GetClosedPositions();
+        for (int i = 0; i < _grassIterations; i++)
+        {
+            foreach (var position in PoissonDisc.GeneratePoints(_grassDistanceBetweenPlacements, WorldSize, 50))
+            {
+                var index = (Vector3Int)Utils.GetGridIndex(position);
+                if (candidatePositions.Contains(index) && !closedTiles.Contains(index))
+                    grassPositions.Add(index);
+            }
+        }
+        
+        PlaceGrassTiles(grassPositions);
+    }
+
     private void PlaceTile(float[,] heightMap, int x, int y)
     {
         if (_generateLakes && heightMap[x, y] < _lakeThreshhold)
         {
-            PlaceWaterTile(x, y);
+            WaterTilemap.SetTile(x, y);
         }
         else if (heightMap[x, y] < _groundThreshold)
         {
-            PlaceGroundTile(x, y);
+            GroundTilemap.SetTile(x, y);
         }
         else if (_generateRivers && heightMap[x, y] < _riverThreshhold)
         {
-            PlaceWaterTile(x, y);
+            WaterTilemap.SetTile(x, y);
         }
         else
         {
-            PlaceGroundTile(x, y);
+            GroundTilemap.SetTile(x, y);
         }
     }
 
-    private void PlaceWaterTile(int x, int y)
+    private void PlaceGrassTiles(IEnumerable<Vector3Int> positions)
     {
-        WaterTilemap.SetTile(x, y);
-    }
-
-    private void PlaceGroundTile(int x, int y)
-    {
-        GroundTilemap.SetTile(x, y);
-    }
-}
-
-
-public static class DirectionUtility
-{
-    public static Vector2Int[] MajorDirections = new Vector2Int[]
-    {
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right,
-        Vector2Int.up
-    };
-
-    public static Vector2Int[] DiagonalDirections = new Vector2Int[]
-    {
-        Vector2Int.down + Vector2Int.left,
-        Vector2Int.left + Vector2Int.up,
-        Vector2Int.right + Vector2Int.down,
-        Vector2Int.up + Vector2Int.right
-    };
-
-    public static Vector2Int[] AllDirections = new Vector2Int[]
-    {
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right,
-        Vector2Int.up,
-        Vector2Int.down + Vector2Int.left,
-        Vector2Int.left + Vector2Int.up,
-        Vector2Int.right + Vector2Int.down,
-        Vector2Int.up + Vector2Int.right
-    };
-
-    public static Dictionary<Vector2Int, float> CreateDirectionDictionaryWithWeights(
-        float upWeight = 1f,
-        float downWeight = 1f,
-        float leftWeight = 1f,
-        float rightWeight = 1f,
-        float upRightWeight = 1f,
-        float upLeftWeight = 1f,
-        float downRightWeight = 1f,
-        float downLeftWeight = 1f)
-    {
-        return new Dictionary<Vector2Int, float>()
+        foreach (var pos in positions)
         {
-            {Vector2Int.down, downWeight},
-            {Vector2Int.left, leftWeight},
-            {Vector2Int.right, rightWeight},
-            {Vector2Int.up, upWeight},
-            {Vector2Int.down + Vector2Int.left, downLeftWeight},
-            {Vector2Int.left + Vector2Int.up, upLeftWeight},
-            {Vector2Int.right + Vector2Int.down, downRightWeight},
-            {Vector2Int.up + Vector2Int.right, upRightWeight}
-        };
+            GroundDecorationTilemap.SetTile(pos.x, pos.y);
+        }
     }
 }

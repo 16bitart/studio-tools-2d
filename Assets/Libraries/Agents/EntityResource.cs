@@ -3,9 +3,6 @@ using UnityEngine;
 
 [Serializable] public class Health : EntityResource { }
 [Serializable] public class Stamina : EntityResource { }
-[Serializable] public class Hunger : EntityResource { }
-[Serializable] public class Thirst : EntityResource { }
-[Serializable] public class Fatigue : EntityResource { }
 
 [Serializable]
 public class EntityResource

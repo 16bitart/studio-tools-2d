@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea38fe8dee184201bc527f9da4a9fc0b, type: 3}
+  m_Name: DynamicTreeData
+  m_EditorClassIdentifier: 
+  <Prefab>k__BackingField: {fileID: 795367070816468903, guid: d32f80546cd217341b0c53e8765a4752, type: 3}
+  <DynamicObject>k__BackingField: {fileID: 1474992378177515368, guid: d32f80546cd217341b0c53e8765a4752, type: 3}
+  <PlacementName>k__BackingField: PlainsTreeNode
+  <ObjectSize>k__BackingField: {x: 3, y: 4}
