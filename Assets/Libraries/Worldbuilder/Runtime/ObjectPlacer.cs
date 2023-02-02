@@ -9,7 +9,7 @@ using Random = UnityEngine.Random;
 
 public abstract class ObjectPlacer : MonoBehaviour
 {
-    protected Vector2Int _worldSize;
+    protected Vector2Int _worldSize => _worldbuilder != null ? _worldbuilder.WorldSize : Vector2Int.zero;
     
     [SerializeField] protected Worldbuilder _worldbuilder;
     [SerializeField] protected DynamicObjectData _data;
@@ -27,6 +27,7 @@ public abstract class ObjectPlacer : MonoBehaviour
     [SerializeField, Range(0, 25f)] protected float _clusterRadius = 3f;
     [SerializeField] protected int _minClusterSize = 2;
     [SerializeField] protected int _maxClusterSize = 6;
+    [SerializeField] protected int _maxClusters = 15;
     public abstract string CollectionGameObjectName { get; }
     [SerializeField] protected GameObject _parentGameObject;
     [SerializeField] protected List<GameObject> _placements;
@@ -50,8 +51,9 @@ public abstract class ObjectPlacer : MonoBehaviour
     public void GenerateObjects()
     {
         Reset();
+        
         if(!_generate) return;
-        _worldSize = new Vector2Int((int)_worldbuilder.WorldSize.x, (int)_worldbuilder.WorldSize.y);
+        
         var closedTiles = _worldbuilder.GetClosedPositions();
         
         var objectPositions = DetermineObjectPositions(_data,
@@ -60,6 +62,8 @@ public abstract class ObjectPlacer : MonoBehaviour
             _minDistanceBetween,
             _maxPlacements, 
             _minPlacements);
+        
+        Debug.Log($"Determined {objectPositions.Count} positions for [{_data.PlacementName}] placement.");
         
         if (_allowClustering)
         {
@@ -73,11 +77,22 @@ public abstract class ObjectPlacer : MonoBehaviour
                 :  _maxPlacements;
 
 
+            var currentTime = Time.time;
+            var maxTime = Time.time + 30f;
+            Debug.Log($"Clustering enabled. Starting generation. Current time is {currentTime}.");
+
+            var clustersGenerated = 0;
+            
             foreach (var startPos in startPositions)
             {
+                if (Time.time > maxTime)
+                {
+                    Debug.Log($"Exceeding max generation time of {maxTime}. Breaking.");
+                    break;
+                }
                 if (objectPositions.Count >= maximumForClusters) break;
                 if (Random.value > _clusterChance) continue;
-                
+                clustersGenerated++;
                 currentPos = startPos;
                 var clusterCount = Random.Range(_minClusterSize, _maxClusterSize);
                 
@@ -96,14 +111,14 @@ public abstract class ObjectPlacer : MonoBehaviour
                     currentPos = finalPos;
                 }
             }
+            Debug.Log($"Generated {clustersGenerated} clusters.");
         }
 
         _parentGameObject = new GameObject(CollectionGameObjectName);
         _parentGameObject.transform.SetParent(transform);
         _placements.AddRange(CreateObjectsAtPosition(_data, objectPositions, _parentGameObject.transform));
-        _closedTiles = new HashSet<Vector3Int>();
-        _closedTiles.UnionWith(closedTiles);
-        
+        _closedTiles = objectPositions;
+
         foreach (var plant in _placements.Select(x => x.GetComponent<PlantNode>()))
         {
             if(plant != null) plant.Initialize();
@@ -112,9 +127,21 @@ public abstract class ObjectPlacer : MonoBehaviour
     
     public void Reset()
     {
-        if (_parentGameObject != null) DestroyImmediate(_parentGameObject);
-        if(_placements != null) _placements.Clear();
-        if (_placements == null) _placements = new List<GameObject>();
+        if (_placements != null)
+        {
+            foreach (var placement in _placements)
+            {
+                DestroyImmediate(placement);
+            }
+            _placements.Clear();
+        }
+        else
+            _placements = new List<GameObject>();
+        
+        if (_parentGameObject != null)
+            DestroyImmediate(_parentGameObject);
+
+        _closedTiles = new HashSet<Vector3Int>();
     }
     
     public HashSet<Vector3Int> DetermineObjectPositions(
@@ -127,38 +154,44 @@ public abstract class ObjectPlacer : MonoBehaviour
     {
         var objectPositions = new HashSet<Vector3Int>();
         var targetPlacements = Mathf.FloorToInt(Random.Range(minPlacements, maxPlacements));
-        var closed = new Vector3Int[closedPositions.Count];
-        closedPositions.CopyTo(closed);
-        var closedList = closed.ToList();
-        
+
+        var maxTime = Time.time + 100f;
         while (objectPositions.Count < targetPlacements)
         {
+            if (Time.time > maxTime)
+            {
+                Debug.Log($"Exceeding max placement position determination time of {maxTime}. Breaking.");
+                break;
+            }
             var positions = PoissonDisc.GeneratePoints(minDistance, regionSize)
-                .Select(position => new Vector3Int(Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.y), 0))
                 .Where(position => Utils.IsInsideGrid(new Vector2(position.x, position.y), _worldSize))
-                .Where(objPos => !closedList.Contains(objPos));
-            
+                .Select(position => new Vector3Int(Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.y), 0));
+
             foreach (var objPos in positions)
             {
+                if (closedPositions.Contains(objPos) || objectPositions.Contains(objPos)) continue;
+
                 objectPositions.Add(objPos);
                 
-                var yLength = objPos.y + objectData.ObjectSize.y;
-                var xLength = objPos.x + objectData.ObjectSize.x;
-                
-                for (int y = objPos.y; y < yLength; y++)
+                if (objectData.ObjectSize != Vector2.zero)
                 {
-                    for (int x = objPos.x; x < xLength; x++)
+                    var yLength = objPos.y + objectData.ObjectSize.y;
+                    var xLength = objPos.x + objectData.ObjectSize.x;
+                
+                    for (int y = objPos.y; y < yLength; y++)
                     {
-                        closedList.Add(new Vector3Int(x, y, 0));
+                        for (int x = objPos.x; x < xLength; x++)
+                        {
+                            closedPositions.Add(new Vector3Int(x, y, 0));
+                        }
                     }
                 }
-
+                
                 if (objectPositions.Count >= targetPlacements) break;
             }
         }
         
-        closedPositions.UnionWith(closedList);
-        
+        Debug.Log($"Determined {objectPositions.Count} positions for object placement. Target count was {targetPlacements}");
         return objectPositions;
     }
     

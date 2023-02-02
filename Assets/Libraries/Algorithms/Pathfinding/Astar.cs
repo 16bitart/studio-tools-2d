@@ -1,16 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Libraries.Algorithms.Pathfinding
 {
+    public class Pathfinder : MonoBehaviour
+    {
+        private AstarGrid _astarGrid;
+        [field: SerializeField] public Vector2Int GridSize { get; private set; }
+        [field: SerializeField] public LayerMask Layers { get; private set; }
+
+        private Collider2D[] _nonAllocArray = new Collider2D[1];
+        private void Awake()
+        {
+            _astarGrid = new AstarGrid(GridSize.x, GridSize.y, transform.position);
+        }
+
+        private void Start()
+        {
+            _astarGrid.InitializeAstarNodeInfo(CheckIfOpen);
+        }
+
+        public void UpdateGrid()
+        {
+            _astarGrid.UpdateNodeInfoOpenStatus(CheckIfOpen);
+        }
+
+        public List<Vector2> CreatePath(Vector2Int start, Vector2Int end)
+        {
+            return _astarGrid.GeneratePath(start, end);
+        }
+
+        private bool CheckIfOpen(Vector2 point)
+        {
+            return Physics2D.OverlapCircleNonAlloc(point, .5f, _nonAllocArray, Layers.value) == 0;
+        }
+    }
+    
     public class AstarGrid : Grid2D<AstarNode, AstarNodeInfo>
     {
         [field: SerializeField] public Vector2 WorldPosition { get; private set; }
-
-        private HashSet<AstarNode> _openNodes;
-        private HashSet<AstarNode> _closedNodes;
-
+        
         public AstarGrid(int width, int height, Vector2 worldPosition) : base(width, height)
         {
             WorldPosition = worldPosition;
@@ -31,27 +62,34 @@ namespace Libraries.Algorithms.Pathfinding
 
         public void UpdateNodeInfoOpenStatus(Func<Vector2, bool> openCheckFunc)
         {
-            _closedNodes.Clear();
             foreach (var node in AllNodes())
             {
-                var result = openCheckFunc(node.Value.Waypoint);
-
-                if (result) _openNodes.Add(node);
-                else _closedNodes.Add(node);
-
-                node.Value.Open = result;
+                node.Value.Open = openCheckFunc(node.Value.Waypoint);
             }
         }
+
+        public List<Vector2> GeneratePath(Vector2Int start, Vector2Int end)
+        {
+            var operation = new AstarOperation(this);
+            return operation.GeneratePath(start, end).ToList();
+        }
     }
-    
+
     public class AstarNode : Node2D<AstarNodeInfo>
     {
-        public AstarNode(int xPos, int yPos, bool open, Vector2 waypoint) 
-            : this(xPos, yPos, new AstarNodeInfo(open, waypoint, new Vector2Int(xPos, yPos))) { }
-        public AstarNode(int xPos, int yPos, AstarNodeInfo value = default) 
-            : base(xPos, yPos, value) { }
+        public AstarNode(int xPos, int yPos, bool open, Vector2 waypoint)
+            : this(xPos, yPos, new AstarNodeInfo(open, waypoint, new Vector2Int(xPos, yPos)))
+        {
+        }
 
-        public AstarNode() { }
+        public AstarNode(int xPos, int yPos, AstarNodeInfo value = default)
+            : base(xPos, yPos, value)
+        {
+        }
+
+        public AstarNode()
+        {
+        }
     }
 
     public class AstarNodeInfo
@@ -71,42 +109,6 @@ namespace Libraries.Algorithms.Pathfinding
             GridLocation = gridLocation;
             Waypoint = waypoint;
             Open = open;
-        }
-    }
-
-    public class AstarPathNode : IComparable<AstarPathNode>
-    {
-        public AstarPathNode Parent;
-        public Vector2Int GridLocation { get; set; }
-        public Vector2 Waypoint { get; set; }
-        public bool Open { get; set; }
-
-        public int F => G + H;
-        public int G { get; set; }
-        public int H { get; set; }
-
-        public AstarPathNode(AstarNodeInfo info)
-        {
-            GridLocation = info.GridLocation;
-            Waypoint = info.Waypoint;
-            Open = info.Open;
-        }
-
-        public AstarPathNode(AstarNodeInfo info, AstarPathNode parent) : this(info)
-        {
-           Parent = parent;
-        }
-
-        //1 => Higher Priority
-        public int CompareTo(AstarPathNode other)
-        {
-            if (other == null) return 1;
-            var compare = F.CompareTo(other.F);
-            if (compare == 0)
-            {
-                compare = H.CompareTo(other.H);
-            }
-            return -compare;
         }
     }
 }

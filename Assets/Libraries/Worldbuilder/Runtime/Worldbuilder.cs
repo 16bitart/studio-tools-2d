@@ -8,18 +8,24 @@ using Random = UnityEngine.Random;
 
 public class Worldbuilder : MonoBehaviour
 {
-    public Vector2 WorldSize => new Vector2(_width, _height);
+    public Vector2Int WorldSize => new Vector2Int(_width, _height);
     [SerializeField, Range(10, 500)] private int _width = 100;
     [SerializeField, Range(10, 500)] private int _height = 100;
     [SerializeField, Range(1, 25f)] private float _scale = 15f;
     [SerializeField] private Vector2 _worldOffset = Vector2.zero;
     [SerializeField] private bool _generateLakes = true;
     [SerializeField] private bool _generateRivers = true;
+    
     [SerializeField, Range(0, 1f)] private float _groundThreshold = .3f;
     [SerializeField, Range(0, 1f)] private float _lakeThreshhold = .2f;
     [SerializeField, Range(0, 1f)] private float _riverThreshhold = .4f;
-    [SerializeField, Range(0, 25)] private int _grassDistanceBetweenPlacements = 1;
-    [SerializeField, Range(0, 25)] private int _grassIterations = 1;
+    
+    [SerializeField, Range(0, 10)] private int _grassIterations = 1;
+    [SerializeField, Range(0, 250f)] private float _grassDistanceBetweenPlacements = 5f;
+
+    [SerializeField, Range(0, 10)] private int _grassExpansions = 1;
+    [SerializeField, Range(0, 250f)] private float _grassExpansionRadius = 3f;
+
     [field: SerializeField] public TilemapBuilder GroundTilemap { get; private set; }
     [field: SerializeField] public TilemapBuilder WaterTilemap { get; private set; }
     [field: SerializeField] public TilemapBuilder GroundDecorationTilemap { get; private set; }
@@ -42,23 +48,33 @@ public class Worldbuilder : MonoBehaviour
     [ContextMenu("Run Generation")]
     public void Run()
     {
+        var startTime = Time.time;
+        Debug.Log("Beginning generation.");
         Reset();
+        Debug.Log("Generating terrain.");
         GenerateTerrain();
+        Debug.Log("Generating grass.");
         GenerateGrass();
+        Debug.Log("Generating plants.");
         _plantPlacer.GenerateObjects();
+        Debug.Log("Generating trees.");
         _treePlacer.GenerateObjects();
+        Debug.Log("Generating minerals.");
         _mineralPlacer.GenerateObjects();
+        var endTime = Time.time;
+        Debug.Log($"Completed generation. Elapsed time: {endTime}");
     }
     
     [ContextMenu("Reset World")]
     public void Reset()
     {
-        GroundTilemap.ClearAllTiles();
-        WaterTilemap.ClearAllTiles();
-        GroundDecorationTilemap.ClearAllTiles();
         _treePlacer.Reset();
         _plantPlacer.Reset();
         _mineralPlacer.Reset();
+        
+        GroundTilemap.ClearAllTiles();
+        WaterTilemap.ClearAllTiles();
+        GroundDecorationTilemap.ClearAllTiles();
     }
 
     public HashSet<Vector3Int> GetClosedPositions()
@@ -74,7 +90,6 @@ public class Worldbuilder : MonoBehaviour
     private void GenerateTerrain()
     {
         _heightMap = HeightMapGenerator.Generate(_width, _height, _worldOffset, _scale);
-        
         for (int y = 0; y < _height; y++)
         {
             for (int x = 0; x < _width; x++)
@@ -87,46 +102,62 @@ public class Worldbuilder : MonoBehaviour
     private void GenerateGrass()
     {
         var grassPositions = new HashSet<Vector3Int>();
-        var candidatePositions = GroundTilemap.GetAllTileLocations();
-        var closedTiles = GetClosedPositions();
-        for (int i = 0; i < _grassIterations; i++)
+        
+        var candidatePositions = GroundTilemap.GetAllTileLocations().ToHashSet();
+        foreach (var closedPosition in GetClosedPositions())
         {
-            foreach (var position in PoissonDisc.GeneratePoints(_grassDistanceBetweenPlacements, WorldSize, 50))
+            if (candidatePositions.Contains(closedPosition))
             {
-                var index = (Vector3Int)Utils.GetGridIndex(position);
-                if (candidatePositions.Contains(index) && !closedTiles.Contains(index))
-                    grassPositions.Add(index);
+                candidatePositions.Remove(closedPosition);
             }
         }
         
-        PlaceGrassTiles(grassPositions);
+        for (int i = 0; i < _grassIterations; i++)
+        {
+            foreach (var position in PoissonDisc.GeneratePoints(_grassDistanceBetweenPlacements, WorldSize, 10))
+            {
+                var finalPosition = (Vector3Int)Utils.GetGridIndex(position);
+                if (candidatePositions.Contains(finalPosition))
+                    grassPositions.Add(finalPosition);
+                
+                for (int g = 0; g < _grassExpansions; g++)
+                {
+                    if(Random.value > .5) continue;
+                    var point = Random.insideUnitCircle * _grassExpansionRadius;
+                    var roundedPoint = new Vector3Int(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.y));
+                    var newPos = finalPosition + roundedPoint;
+                    if (candidatePositions.Contains(newPos))
+                        grassPositions.Add(newPos);
+                }
+            }
+        }
+
+        foreach (var pos in grassPositions)
+        {
+            GroundDecorationTilemap.SetTile(pos);
+        }
     }
 
     private void PlaceTile(float[,] heightMap, int x, int y)
     {
-        if (_generateLakes && heightMap[x, y] < _lakeThreshhold)
+        if (Utils.IsInsideGrid(new Vector2(x, y), heightMap))
         {
-            WaterTilemap.SetTile(x, y);
-        }
-        else if (heightMap[x, y] < _groundThreshold)
-        {
-            GroundTilemap.SetTile(x, y);
-        }
-        else if (_generateRivers && heightMap[x, y] < _riverThreshhold)
-        {
-            WaterTilemap.SetTile(x, y);
-        }
-        else
-        {
-            GroundTilemap.SetTile(x, y);
-        }
-    }
-
-    private void PlaceGrassTiles(IEnumerable<Vector3Int> positions)
-    {
-        foreach (var pos in positions)
-        {
-            GroundDecorationTilemap.SetTile(pos.x, pos.y);
+            if (heightMap[x, y] < _groundThreshold)
+            {
+                GroundTilemap.SetTile(x, y);
+            }
+            else if (_generateLakes && heightMap[x, y] < _lakeThreshhold)
+            {
+                WaterTilemap.SetTile(x, y);
+            }
+            else if (_generateRivers && heightMap[x, y] < _riverThreshhold)
+            {
+                WaterTilemap.SetTile(x, y);
+            }
+            else
+            {
+                GroundTilemap.SetTile(x, y);
+            }  
         }
     }
 }

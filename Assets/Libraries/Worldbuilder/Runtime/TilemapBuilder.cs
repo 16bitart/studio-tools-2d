@@ -17,20 +17,18 @@ public class TilemapBuilder : MonoBehaviour
 
     public List<Vector3Int> GetAllTileLocations()
     {
+        _tilemap.CompressBounds();
         return _tileLocations.ToList();
-    }
-
-    public bool HasTile(int x, int y)
-    {
-        return _tileLocations.Contains(new Vector3Int(x, y, 0));
     }
 
     public void SetTile(int x, int y)
     {
-        var pos = new Vector3Int(x, y, 0);
-        
-        _tilemap.SetTile(pos, _baseTile);
+        SetTile( new Vector3Int(x, y, 0));
+    }
 
+    public void SetTile(Vector3Int pos)
+    {
+        _tilemap.SetTile(pos, _baseTile);
         _tileLocations.Add(pos);
     }
 

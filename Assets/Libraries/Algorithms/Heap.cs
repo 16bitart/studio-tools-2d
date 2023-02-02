@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Libraries.Algorithms.Pathfinding;
 
 namespace Libraries.Algorithms
 {
@@ -77,8 +79,8 @@ namespace Libraries.Algorithms
 
                 if (swapIndex == currentIndex)
                     break;
-                else
-                    Swap(swapIndex, currentIndex);
+                
+                Swap(swapIndex, currentIndex);
 
                 currentIndex = swapIndex;
             }
@@ -87,6 +89,11 @@ namespace Libraries.Algorithms
         private void Swap(int indexA, int indexB)
         {
             (_items[indexA], _items[indexB]) = (_items[indexB], _items[indexA]);
+        }
+
+        public bool Contains(T item)
+        {
+            return _items.Any(x => x.Equals(item));
         }
     }
 }
